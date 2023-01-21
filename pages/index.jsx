@@ -6,7 +6,7 @@ import Footer from "../components/Footer";
 import Report from "../components/Report";
 import ProgressBar from "../components/ProgressBar";
 import chatGPTbox from "../components/chatGPTbox";
-import ApiKeyForm from "../components/ApiKeyForm";
+import Welcome from "../components/Welcome";
 
 export default function Home() {
   const inputRef = useRef();
@@ -16,7 +16,6 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [selectedPrompts, setSelectedPrompts] = useState([]);
   const [isSelectAllChecked, setIsSelectAllChecked] = useState(false);
-
   const [apikey, setApikey] = useState(false);
 
   const chatGPT = async (text) => {
@@ -51,37 +50,43 @@ export default function Home() {
   };
 
   const handleSubmit = async (e) => {
-    setContent({});
-    console.log(selectedPrompts);
     e.preventDefault();
+    setContent({});
     setLoading(true);
     setProgress(10);
     const topic = inputRef.current.value;
-    let output = {};
-    for (let i = 0; i < selectedPrompts.length; i++) {
-      const prompt = selectedPrompts[i].replace("[topic]", topic);
+    let outputArr = [];
 
+    for (let i = 0; i < selectedPrompts.length; i++) {
+      const prompt = selectedPrompts[i].prompt.replace("[topic]", topic);
       const response = await chatGPT(prompt);
-      output[prompt] = response["choices"][0]["text"];
+
+      const obj = {
+        text: response["choices"][0]["text"],
+        render: selectedPrompts[i].render.replace("[topic]", topic),
+      };
+
+      outputArr.push(obj);
+
       setProgress((i + 1) * (100 / selectedPrompts.length));
     }
 
     setProgress(100);
 
     setTimeout(() => {
-      setContent(output);
+      setContent(outputArr);
       setLoading(false);
     }, 500);
-
-    console.log(output);
   };
 
-  const handleChange = (e) => {
-    const { value } = e.target;
-    if (selectedPrompts.includes(value)) {
-      setSelectedPrompts(selectedPrompts.filter((p) => p !== value));
+  const handleCheckboxChange = (e) => {
+    const { value, checked } = e.target;
+    if (checked) {
+      setSelectedPrompts([...selectedPrompts, promptList[value]]);
     } else {
-      setSelectedPrompts([...selectedPrompts, value]);
+      setSelectedPrompts(
+        selectedPrompts.filter((prompt) => prompt !== promptList[value])
+      );
     }
   };
 
@@ -145,11 +150,11 @@ export default function Home() {
                         className="border-bottom border-b-slate-300 p-2"
                       >
                         <input
-                          value={item.prompt}
+                          value={index}
                           type="checkbox"
                           className="mx-4 h-4 w-4"
-                          onChange={handleChange}
-                          checked={selectedPrompts.includes(item.prompt)}
+                          onChange={handleCheckboxChange}
+                          // checked={selectedPrompts.includes(item.prompt)}
                         />
                         <span className="text-lg">{item.render}</span>
                       </div>
@@ -158,22 +163,24 @@ export default function Home() {
                 </form>
               </>
             )}
-
-            {content ? <Report content={content} /> : <></>}
+            { content.length > 0 ? (content.map((obj, index) => (
+              <div
+                key={index}
+                className="p-2 flex flex-col items-center w-full "
+              >
+                <h2 className="my-5 p-2 text-white border border-black bg-gray-800 w-full">
+                  {obj.render}
+                </h2>
+                <div
+                  className="mx-5"
+                  dangerouslySetInnerHTML={{ __html: obj.text }}
+                />
+              </div>
+            ))) : <></>}
           </div>
         ) : (
           <div className="flex flex-col  items-center justify-center">
-            <h2 className="my-5 text-2xl">
-              To start paste your OPEN AI API KEY
-            </h2>
-
-            <p className="my-5">
-              you can get your own key from
-              <a className="text-teal-600 font-bold" href="https://openai.com/">
-                {" "}
-                OPEN AI WEBSITE
-              </a>
-            </p>
+            <Welcome />
 
             <form
               className="w-full flex border border-teal-500 p-5  max-w-4xl my-5"
